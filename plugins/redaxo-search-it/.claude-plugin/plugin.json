@@ -1,0 +1,12 @@
+{
+  "name": "redaxo-search-it",
+  "version": "0.1.0",
+  "description": "Search It addon support for Claude Code: full-text search, indexing, search modules, highlighting, autocomplete",
+  "author": {
+    "name": "Friends Of REDAXO"
+  },
+  "homepage": "https://github.com/FriendsOfREDAXO/search_it",
+  "repository": "https://github.com/FriendsOfREDAXO/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["redaxo", "search_it", "fulltext", "search", "indexing"]
+}

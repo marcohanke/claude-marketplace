@@ -81,6 +81,18 @@
       },
       "homepage": "https://github.com/FriendsOfRedaxo/api",
       "license": "MIT"
+    },
+    {
+      "name": "redaxo-search-it",
+      "source": "./plugins/redaxo-search-it",
+      "description": "Search It addon: full-text search, indexing articles/media/DB columns/PDFs, search modules, highlighting, autocomplete, similarity search",
+      "category": "cms",
+      "tags": ["redaxo", "search_it", "fulltext", "search", "indexing"],
+      "author": {
+        "name": "Friends Of REDAXO"
+      },
+      "homepage": "https://github.com/FriendsOfREDAXO/search_it",
+      "license": "MIT"
     }
   ]
 }

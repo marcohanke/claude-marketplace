@@ -1,6 +1,6 @@
 ---
 name: ycom-quickstart
-description: One-shot recipe to bootstrap a complete YCom community frontend on a REDAXO instance that has the FriendsOfREDAXO `api` addon installed. Creates the 9 articles (login, logout, register + confirm, password forgot + reset, profile, password change, terms of use), wires their YForm pipe code into slices on the standard "YForm Formbuilder" module, sets per-article ycom_auth_type, inserts the email templates, and writes the ycom/auth config keys. Use when the user asks to "set up YCom community pages", "scaffold the YCom frontend", "create the login/registration flow", or runs a fresh REDAXO instance that needs YCom wired up programmatically. Skip when the instance has no `api` addon (offer the manual setup from `ycom-forms` instead).
+description: One-shot recipe to bootstrap a complete YCom community frontend on a REDAXO instance that has the FriendsOfREDAXO `api` addon installed. Builds a clean tree under a Community category — six entry-point sections (login, password-forgot, profile, password-change, registration, logout) as sub-categories so they appear in the meta navigation automatically, and three token-target sub-articles (registration-confirm, password-reset, terms-of-use) tucked under their related section. Wires the YForm pipe code into slices on the standard "YForm Formbuilder" module, sets per-article ycom_auth_type, inserts the email templates, and writes the ycom/auth config keys. Use when the user asks to "set up YCom community pages", "scaffold the YCom frontend", "create the login/registration flow", or runs a fresh REDAXO instance that needs YCom wired up programmatically. Skip when the instance has no `api` addon (offer the manual setup from `ycom-forms` instead).
 ---
 
 # YCom Community Quickstart
@@ -43,44 +43,74 @@ RewriteCond %{HTTP:Authorization} .
 RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 ```
 
-## Step 1 — Create category and 9 articles via the api addon
+## Step 1 — Create the structure via the api addon
+
+The 9 pages are not a flat list. The 6 user-facing entry points (login, password-forgot, profile, password-change, registration, logout) are **categories** at the top level; the 3 token-target pages (registration-confirm, password-reset, terms-of-use) live as **articles inside the related category**:
+
+```
+Community/                                      catprio 1
+├── Login/                                      catprio 1
+├── Passwort vergessen/                         catprio 2
+│   └── Passwort zuruecksetzen
+├── Profil/                                     catprio 3
+│   └── Nutzungsbedingungen akzeptieren
+├── Passwort aendern/                           catprio 4
+├── Registrierung/                              catprio 5
+│   └── Registrierung bestaetigen
+└── Logout/                                     catprio 6
+```
+
+Why categories at the top: the standard `rex_navigation` factory + `rex_ycom_auth::articleIsPermitted` filter render the sub-categories of `Community` automatically. With this layout you get a clean meta nav out of the box — `Login | Passwort vergessen | Registrierung` for guests, `Profil | Passwort aendern | Logout` for logged-in users — without writing a single template fragment. The token-target pages (confirm/reset/terms) are intentionally NOT navigation entries; they only exist as URL targets for email links and injection redirects.
 
 ```bash
 PARENT=0
 TEMPLATE=1
 CLANG=1                     # de — adjust if your active language differs
 
-# 1a) Category. NOTE: no trailing slash on the path. The parent is named
-# `category_id` (NOT parent_id). Response shape: {"message":..., "id":N}.
-COMMUNITY=$(curl -sk -X POST "$BASE/api/structure/categories" \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d "{\"name\":\"Community\",\"category_id\":$PARENT,\"status\":1}" \
-  | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
-
-# 1b) Articles — one per page. Helper:
+# Helpers. NOTE: categories endpoint has no trailing slash. Parent is `category_id`
+# (NOT parent_id). `priority` on a category POST maps to catpriority. Response
+# shape: {"message":..., "id":N} — no "data" wrapper.
+mkcat() {
+  local name="$1"; local parent="$2"; local prio="$3"
+  curl -sk -X POST "$BASE/api/structure/categories" \
+    -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+    -d "{\"name\":\"$name\",\"category_id\":$parent,\"priority\":$prio,\"status\":1}" \
+    | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])'
+}
 mkart() {
+  local name="$1"; local parent="$2"; local prio="$3"
   curl -sk -X POST "$BASE/api/structure/articles" \
     -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-    -d "{\"name\":\"$1\",\"category_id\":$COMMUNITY,\"template_id\":$TEMPLATE,\"status\":1}" \
+    -d "{\"name\":\"$name\",\"category_id\":$parent,\"template_id\":$TEMPLATE,\"priority\":$prio,\"status\":1}" \
     | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])'
 }
 
-LOGIN=$(mkart "Login")
-LOGOUT=$(mkart "Logout")
-REGISTER=$(mkart "Registrierung")
-REGISTER_CONFIRM=$(mkart "Registrierung bestaetigen")
-FORGOT=$(mkart "Passwort vergessen")
-RESET=$(mkart "Passwort zuruecksetzen")
-PROFILE=$(mkart "Profil")
-PWCHANGE=$(mkart "Passwort aendern")
-TERMS=$(mkart "Nutzungsbedingungen akzeptieren")
+# 1a) Top-level wrapper category
+COMMUNITY=$(mkcat "Community" $PARENT 1)
 
-echo "$LOGIN $LOGOUT $REGISTER $REGISTER_CONFIRM $FORGOT $RESET $PROFILE $PWCHANGE $TERMS"
+# 1b) Six top-level entry-point sections. catpriority 1..6 controls the meta-nav order.
+LOGIN=$(mkcat    "Login"             $COMMUNITY 1)
+FORGOT=$(mkcat   "Passwort vergessen" $COMMUNITY 2)
+PROFILE=$(mkcat  "Profil"            $COMMUNITY 3)
+PWCHANGE=$(mkcat "Passwort aendern"  $COMMUNITY 4)
+REGISTER=$(mkcat "Registrierung"     $COMMUNITY 5)
+LOGOUT=$(mkcat   "Logout"            $COMMUNITY 6)
+
+# 1c) Three token-target sub-articles inside their parent category
+RESET=$(mkart            "Passwort zuruecksetzen"          $FORGOT   2)
+TERMS=$(mkart            "Nutzungsbedingungen akzeptieren" $PROFILE  2)
+REGISTER_CONFIRM=$(mkart "Registrierung bestaetigen"       $REGISTER 2)
+
+echo "community=$COMMUNITY login=$LOGIN logout=$LOGOUT register=$REGISTER \\
+  reg-confirm=$REGISTER_CONFIRM forgot=$FORGOT reset=$RESET \\
+  profile=$PROFILE pwchange=$PWCHANGE terms=$TERMS"
 ```
 
-The articles are created online (`status=1`) via the api addon's POST endpoint. If you'd rather review them in the backend first, drop `"status":1` from the `mkart` body — articles then default to offline and you can flip them on later via `PUT /api/structure/articles/{id}` with `{"status":1}`.
+When the api addon creates a category, REDAXO automatically materializes a *start article* with the same id — that's where step 2 puts the slice. So `LOGIN` here is BOTH the category id and its start-article id; `POST /api/structure/articles/$LOGIN/slices` is the right call later.
 
-Avoid umlauts in article names — the slug-generator will UTF-8-escape them and you'll fight URL parsing later. Use `bestaetigen` not `bestätigen`, `aendern` not `ändern`. The form labels can still use proper umlauts.
+Everything is created online (`status=1`). If you'd rather review the structure in the backend before going live, drop `"status":1` from the `mkcat` / `mkart` bodies — pages default to offline. Flip them on later via `PUT /api/structure/articles/{id}` with `{"status":1}` (which now also works correctly on category start-articles since `FriendsOfREDAXO/api` ≥ 1.2).
+
+Avoid umlauts in article names — the slug-generator will UTF-8-escape them and you'll fight URL parsing later. Use `bestaetigen` not `bestätigen`, `aendern` not `ändern`. The form labels (rendered server-side from the pipe code) can still use proper umlauts.
 
 The api addon doesn't accept custom columns (`ycom_auth_type`) at create-time; we set those in step 3.
 
@@ -230,16 +260,19 @@ action|showtext|<div class="alert alert-success">Nutzungsbedingungen akzeptiert.
 action|ycom_auth_db
 ```
 
-Then push them all:
+Then push them all. The six top-level entries slice into the start article of each category (same id as the category itself); the three sub-articles get their own slice:
 ```bash
+# Top-level pages (slices on category start-articles)
 mkslice $LOGIN              /tmp/ycom-pipes/login.pipe
 mkslice $LOGOUT             /tmp/ycom-pipes/logout.pipe
 mkslice $REGISTER           /tmp/ycom-pipes/register.pipe
-mkslice $REGISTER_CONFIRM   /tmp/ycom-pipes/register_confirm.pipe
 mkslice $FORGOT             /tmp/ycom-pipes/forgot.pipe
-mkslice $RESET              /tmp/ycom-pipes/reset.pipe
 mkslice $PROFILE            /tmp/ycom-pipes/profile.pipe
 mkslice $PWCHANGE           /tmp/ycom-pipes/pwchange.pipe
+
+# Sub-articles (token targets — not in nav)
+mkslice $REGISTER_CONFIRM   /tmp/ycom-pipes/register_confirm.pipe
+mkslice $RESET              /tmp/ycom-pipes/reset.pipe
 mkslice $TERMS              /tmp/ycom-pipes/terms.pipe
 ```
 
@@ -371,20 +404,22 @@ php /tmp/ycom-quickstart.php \
 
 ## Step 4 — Smoke-test (optional)
 
-If your dev instance has mail capture (MailHog at `localhost:1025`, Mailpit, or read `rex_yform_email_template` send log), verify a real flow. The token from the email URL:
+If your dev instance has mail capture (MailHog at `localhost:1025`, Mailpit, or read `rex_yform_email_template` send log), verify a real flow. Email links land on the nested URL of the token-target page:
 
 ```
-http(s)://example.local/de/community/registrierung-bestaetigen/?token=<verifier20chars><base64hash>
+http(s)://example.local/de/community/registrierung/registrierung-bestaetigen/?token=<verifier20chars><base64hash>
+http(s)://example.local/de/community/passwort-vergessen/passwort-zuruecksetzen/?token=…
 ```
 
 The `==` base64 padding gets URL-encoded to `%3D%3D`. When pasting into a curl test, leave it encoded.
 
 Manual flow:
-1. `/registrierung` → fill + submit → "Bitte pruefen Sie Ihre E-Mails…"
-2. Pull link from MailHog → click → "Vielen Dank, Ihre E-Mail wurde bestaetigt." → user is logged in (status flips 0 → 1)
-3. `/profil` shows your name
-4. `/community/logout/` → redirects to `/login/`
-5. Login with credentials → redirects to `/profil/`
+1. Visit `/community/registrierung/` → fill + submit → "Bitte pruefen Sie Ihre E-Mails…"
+2. Pull the link from MailHog → click → "Vielen Dank, Ihre E-Mail wurde bestaetigt." → user is logged in (status flips 0 → 1)
+3. `/community/profil/` shows your name
+4. `/community/logout/` → redirects to `/community/login/`
+5. Login with credentials → redirects to `/community/profil/`
+6. **Sanity check the nav:** the standard `rex_navigation` factory (with `addCallback('rex_ycom_auth::articleIsPermitted')`) should show `Login | Passwort vergessen | Registrierung` for guests and `Passwort vergessen | Profil | Passwort aendern | Logout` for logged-in users. That switch comes for free from the category layout — no template work.
 
 For automation, write a Playwright spec — Chrome via MCP would inherit your admin session and confuse the auth checks; Playwright's fresh context avoids that.
 
@@ -394,11 +429,11 @@ Steps 2 and 3 are idempotent **as long as the article IDs don't change**. Save t
 
 ```bash
 cat > .ycom-quickstart-state.json <<EOF
-{"login":$LOGIN,"logout":$LOGOUT,"register":$REGISTER,"register_confirm":$REGISTER_CONFIRM,"forgot":$FORGOT,"reset":$RESET,"profile":$PROFILE,"pwchange":$PWCHANGE,"terms":$TERMS}
+{"community":$COMMUNITY,"login":$LOGIN,"logout":$LOGOUT,"register":$REGISTER,"register_confirm":$REGISTER_CONFIRM,"forgot":$FORGOT,"reset":$RESET,"profile":$PROFILE,"pwchange":$PWCHANGE,"terms":$TERMS}
 EOF
 ```
 
-Re-run guard for step 1: query `GET /api/structure/articles?per_page=200` and skip names that already exist under the Community category. Step 2 (slices): query `GET /api/structure/articles/$ID/slices` and PATCH the existing slice instead of POSTing a new one. Step 3 is fully idempotent (UPDATE, INSERT…ON DUPLICATE KEY UPDATE, setConfig).
+Re-run guard for step 1: query `GET /api/structure/articles?per_page=200` and skip names that already exist under the Community category. The six entry-point sections show up there as start-articles (`startarticle=1`), the three sub-targets as regular articles. Step 2 (slices): query `GET /api/structure/articles/$ID/slices` and PATCH the existing slice instead of POSTing a new one. Step 3 is fully idempotent (UPDATE, INSERT…ON DUPLICATE KEY UPDATE, setConfig).
 
 ## Common pitfalls (all observed during dogfood)
 

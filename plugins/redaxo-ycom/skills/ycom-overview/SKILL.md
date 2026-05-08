@@ -129,10 +129,16 @@ if (rex_ycom_auth::getUser()) { /* logged in */ }
 $article = rex_article::get($id);
 rex_ycom_auth::articleIsPermitted($article); // bool
 
-// Programmatic login (e.g. after a custom registration step)
-rex_ycom_auth::loginWithParams(['login' => $userId]);
+// Programmatic login (e.g. after a custom registration step).
+// Each key/value becomes a YOrm where() clause — use real columns,
+// not magic names. `login` is a string column, NOT a user id.
+rex_ycom_auth::loginWithParams(['id' => $userId]);
+rex_ycom_auth::loginWithParams(['email' => $email]);
 
-// Logout
+// Logout (writes log entry, clears stay-logged-in cookie, clears session)
+rex_ycom_auth::logout($user);
+
+// Low-level: clear session only (no log entry, no cookie cleanup)
 rex_ycom_auth::clearUserSession();
 
 // Session variables
@@ -230,4 +236,6 @@ Set via `auth_rule` in YCom settings.
 - Reading status with `==` against `STATUS_REQUESTED` (0) without checking for false-positives — `null == 0` is true in loose comparison. Use `===` or constants.
 - Forgetting that `articleIsPermitted()` doesn't redirect on its own — it just returns bool. The redirect happens inside `rex_ycom_auth::init()`.
 - Hardcoding article IDs in templates — always pull from `rex_ycom_config::get('article_id_login')` etc., so the editor can change them in the backend.
-- Calling `loginWithParams(['login' => $userId])` from a context where the response was already sent — login sets headers, must run before output.
+- Calling `loginWithParams()` from a context where the response was already sent — login sets headers (cookie + redirect), must run before output.
+- Passing a user id as `['login' => $userId]` to `loginWithParams()` — `login` is the string login name, not the id. Use `['id' => $userId]` or `['email' => $email]`.
+- Using `clearUserSession()` as the user-facing logout — it skips the log entry and stay-logged-in cookie cleanup. Use `rex_ycom_auth::logout($user)` for the full flow.

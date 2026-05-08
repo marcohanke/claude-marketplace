@@ -74,9 +74,12 @@ foreach ($user->getRelatedCollection('ycom_groups') as $group) {
 ```php
 $user = rex_ycom_auth::getUser();
 if ($user) {
+    // getRelatedDataset returns the FIRST related group only — fine when each
+    // user has exactly one group. For multi-group users, iterate the collection
+    // and pick the highest-priority target instead.
     $group = $user->getRelatedDataset('ycom_groups');
     if ($group) {
-        $target = $group->getValue('target_id'); // custom be_link field on the group table
+        $target = (int) $group->getValue('target_id'); // custom be_link field on the group table
         if ($target) {
             rex_response::sendRedirect(rex_getUrl($target));
         }
@@ -84,7 +87,17 @@ if ($user) {
 }
 ```
 
-Add a `target_id` field (type `be_link`) to the YCom group table so editors can configure where each group lands after login.
+Add a `target_id` field (type `be_link`) to the YCom group table so editors can configure where each group lands after login. Multi-group example:
+
+```php
+foreach ($user->getRelatedCollection('ycom_groups') as $group) {
+    $target = (int) $group->getValue('target_id');
+    if ($target) {
+        rex_response::sendRedirect(rex_getUrl($target));
+        return;
+    }
+}
+```
 
 ### Extending article permission UI
 

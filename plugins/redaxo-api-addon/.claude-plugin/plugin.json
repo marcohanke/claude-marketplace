@@ -1,7 +1,7 @@
 {
   "name": "redaxo-api-addon",
-  "version": "0.1.0",
-  "description": "Support for the FriendsOfRedaxo/api addon: bearer-token REST API for articles, categories, slices, modules, templates, languages, media, and users",
+  "version": "0.2.0",
+  "description": "Support for the FriendsOfRedaxo/api addon (v1.2+): Bearer-token + backend-session REST API for articles, categories, slices, modules, templates, languages, media (incl. multipart upload), users, roles, and metainfo fields/values",
   "author": {
     "name": "Friends Of REDAXO"
   },

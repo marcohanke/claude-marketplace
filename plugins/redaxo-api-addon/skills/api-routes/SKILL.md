@@ -1,11 +1,13 @@
 ---
 name: api-routes
-description: Calling the FriendsOfRedaxo/api REST endpoints – Bearer auth, route table for articles/categories/slices/modules/templates/languages/media/users, the slice POST schema, OpenAPI spec, and a 401/404/500 diagnostic flow. Covers the known trailing-slash quirks, the two different 401 messages and what they mean, the LIMIT-binding bug, the article list `name`-filter bug, and yrewrite cache invalidation. Use when the user calls the api addon over HTTP, hits a confusing 401/404, syncs articles between systems via this API, or builds tooling around it.
+description: Calling the FriendsOfRedaxo/api REST endpoints (v1.2+) — Bearer + Backend-Session auth, the route table for articles/categories/slices/modules/templates/languages/media/users/metainfo, the slice POST schema, OpenAPI spec, the unified `{data, meta}` list format, and a 401/404/405/500 diagnostic flow. Covers the Backend-mirror under `/api/backend/...`, multipart media upload, metainfo values for articles/categories/media/clangs, and yrewrite cache invalidation. Use when the user calls the api addon over HTTP, hits a confusing 401/404/405, syncs articles between systems via this API, or builds tooling around it.
 ---
 
-# REDAXO `api` Addon – Calling the API
+# REDAXO `api` Addon – Calling the API (v1.2+)
 
-The `api` addon (Repo: `FriendsOfRedaxo/api`, Vendor-NS: `FriendsOfRedaxo\Api`) exposes a RESTful API for a REDAXO backend. Bearer-token auth, Symfony `UrlMatcher` routing, mounted at `/api/...` via `YREWRITE_PREPARE`.
+The `api` addon (Repo: `FriendsOfRedaxo/api`, Vendor-NS: `FriendsOfRedaxo\Api`) exposes a RESTful API for a REDAXO backend. Auth via Bearer token *or* backend session cookie, Symfony `UrlMatcher` routing, mounted at `/api/...` via `YREWRITE_PREPARE`.
+
+Canonical reference (always trust over this skill if they disagree): the addon `README.md` and `lib/RoutePackage/*.php`.
 
 ## Activation & auth
 
@@ -14,7 +16,7 @@ The `api` addon (Repo: `FriendsOfRedaxo/api`, Vendor-NS: `FriendsOfRedaxo\Api`) 
 - Auth header: `Authorization: Bearer <token>`
 - Two auth classes:
   - `BearerAuth` — token-based frontend API (default for most routes)
-  - `BackendUser` — uses the REDAXO backend session (cookie); for routes that should only be called from the backend (e.g. backend media picker)
+  - `BackendUser` — uses the REDAXO backend session cookie. Every Bearer route is automatically mirrored under `/api/backend/...` with `BackendUser` auth and a `backend/<scope>` scope name. These routes follow the backend user's REDAXO permissions (admin / structure / media / clang / etc.) — no token needed.
 
 ### Apache: pass through `Authorization`
 
@@ -25,96 +27,109 @@ RewriteCond %{HTTP:Authorization} .
 RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 ```
 
-## Route table
+## Route table (high-level)
 
-Authoritative list lives in the addon's `README.md`. Most-used routes:
+Authoritative list lives in `lib/RoutePackage/*.php` (scopes) and the addon's `README.md` (paths + bodies). High-level overview of what's available in v1.2:
 
-| Method   | Path                                          | Scope (= route name)              |
-|----------|-----------------------------------------------|-----------------------------------|
-| GET      | `/api/structure/articles`                     | `structure/articles/list`         |
-| POST     | `/api/structure/articles/`                    | `structure/articles/add`          |
-| DELETE   | `/api/structure/articles/{id}`                | `structure/articles/delete`       |
-| POST     | `/api/structure/articles/{id}/slices`         | `structure/articles/slices/add`   |
-| POST     | `/api/structure/categories/`                  | `structure/categories/add`        |
-| DELETE   | `/api/structure/categories/{id}`              | `structure/categories/delete`     |
-| GET/POST | `/api/templates`                              | `templates/list` / `templates/add`|
-| GET/POST | `/api/modules`                                | `modules/list` / `modules/add`    |
-| GET/POST | `/api/system/clangs`                          | `system/clangs/list` / `system/clangs/add` |
-| GET      | `/api/users`                                  | `users/list`                      |
-| GET      | `/api/media`                                  | `media/list`                      |
-| GET      | `/api/media/categories`                       | `media/category/list`             |
+### Structure (articles / categories / slices)
 
-## Trailing-slash quirks
+| Method | Path                                                  | Scope                                  |
+|--------|-------------------------------------------------------|----------------------------------------|
+| GET    | `/api/structure/articles`                             | `structure/articles/list`              |
+| GET    | `/api/structure/articles/{id}`                        | `structure/articles/get`               |
+| POST   | `/api/structure/articles`                             | `structure/articles/add`               |
+| PUT    | `/api/structure/articles/{id}`                        | `structure/articles/update`            |
+| DELETE | `/api/structure/articles/{id}`                        | `structure/articles/delete`            |
+| POST   | `/api/structure/categories`                           | `structure/categories/add`             |
+| PUT    | `/api/structure/categories/{id}`                      | `structure/categories/update`          |
+| DELETE | `/api/structure/categories/{id}`                      | `structure/categories/delete`          |
+| GET    | `/api/structure/articles/{id}/slices`                 | `structure/articles/slices/list`       |
+| GET    | `/api/structure/articles/{id}/slices/{slice_id}`      | `structure/articles/slices/get`        |
+| POST   | `/api/structure/articles/{id}/slices`                 | `structure/articles/slices/add`        |
+| PUT    | `/api/structure/articles/{id}/slices/{slice_id}`      | `structure/articles/slices/update`     |
+| DELETE | `/api/structure/articles/{id}/slices/{slice_id}`      | `structure/articles/slices/delete`     |
 
-The addon registers `structure/articles/list` (GET) on `'structure/articles'` (no slash) **and** `structure/articles/add` (POST) on `'structure/articles/'` (with slash). Symfony's `UrlMatcher` is strict, so:
+### Templates / modules / clangs
 
-- **GET** must go **without** trailing slash: `/api/structure/articles`
-- **POST** must go **with** trailing slash: `/api/structure/articles/`
+GET/POST list+add, GET/PUT/DELETE on `{id}` for all three. Scopes: `templates/{list,get,add,update,delete}`, `modules/{list,get,add,update,delete}`, `system/clangs/{list,get,add,update,delete}`.
 
-The wrong variant returns `{"error":"Route with method not found or no access"}` (HTTP 401). That's not an auth problem — the matcher exception is wrapped generically into 401 by `RouteCollection::handle()`. Other endpoints have similar inconsistencies; trust the body schema in the source code over a first-guess URL.
+### Media
 
-## Two 401 messages — diagnostic split
+| Method | Path                                  | Scope                  |
+|--------|---------------------------------------|------------------------|
+| GET    | `/api/media`                          | `media/list`           |
+| POST   | `/api/media` (multipart/form-data)    | `media/add`            |
+| GET    | `/api/media/{filename}/info`          | `media/get`            |
+| GET    | `/api/media/{filename}/file`          | `media/get/file`       |
+| PUT    | `/api/media/{filename}/update`        | `media/update`         |
+| DELETE | `/api/media/{filename}/delete`        | `media/delete`         |
+| GET    | `/api/media/category`                 | `media/category/list`  |
+| POST   | `/api/media/category`                 | `media/category/add`   |
+| PUT    | `/api/media/category/{id}`            | `media/category/update`|
+| DELETE | `/api/media/category/{id}`            | `media/category/delete`|
 
-| Response                                                     | Meaning                                       |
-|--------------------------------------------------------------|-----------------------------------------------|
-| `{"error":"Authorization failed"}`                           | Token is valid, **scope is missing**          |
-| `{"error":"Route with method not found or no access"}`       | Matcher found **no route** (or controller threw) |
+Multipart upload: send the file under field name `file_new` (multipart/form-data); other metadata fields (`title`, `category_id`) sit alongside as form fields.
 
-For "Route with method not found": check path / method / trailing slash against the source in `src/addons/api/lib/RoutePackage/*.php` first, then suspect the token.
+### Users / roles
 
-## Diagnostic quick-path
+User CRUD on `/api/users[/{id}]` (`users/{list,get,add,update,delete}`), role CRUD on `/api/users/roles[/{id}]` (`users/roles/{list,get,add,update,delete,duplicate}`), and user↔role assignment:
 
-1. **Which auth message?**
-   - `Authorization failed` → extend the token's scope list.
-   - `Route with method not found or no access` → check path / method / trailing-slash against the source code, then `tail var/log/system.log` for controller PHP errors.
-2. **HTTP 500?** → controller threw an unhandled exception. Read the log file.
-3. **HTTP 201 but frontend 404?** → yrewrite path cache stale (see below).
-4. **Slice add returns 404 with "Template has no module in such ctype"** → in the backend, check the template's module/ctype assignment.
+- `GET /api/users/{id}/role` → `users/role/list`
+- `POST /api/users/{id}/role/{role_id}` → `users/role/assign`
+- `DELETE /api/users/{id}/role/{role_id}` → `users/role/remove`
 
-## Known bugs (as of v1.1)
+### Metainfo (v1.2+)
 
-### `structure/articles` list — broken `name` filter
+Field definitions and value-roundtrips for the four metainfo prefixes (`art_*`, `cat_*`, `med_*`, `clang_*`):
 
-In `Structure::handleArticleList`:
+- `GET /api/metainfo/types` → `metainfo/types/list`
+- CRUD on `/api/metainfo/fields[/{id}]` → `metainfo/fields/{list,get,add,update,delete}`
+- Per-resource values:
+  - Articles: `GET/PUT /api/structure/articles/{id}/metainfo` → `metainfo/articles/values/{get,update}`
+  - Categories: `GET/PUT /api/structure/categories/{id}/metainfo` → `metainfo/categories/values/{get,update}`
+  - Media: `GET/PUT /api/media/{filename}/metainfo` → `metainfo/media/values/{get,update}`
+  - Clangs: `GET/PUT /api/system/clangs/{id}/metainfo` → `metainfo/clangs/values/{get,update}` (admin-only via Backend-Session)
 
-```php
-if (null !== $Query['filter']['name']) {       // default is '' not null → branch always runs
-    $SqlQueryWhere[':name'] = 'id LIKE :name'; // should be 'name LIKE'
-    $SqlParameters[':name'] = '%' . $Query['filter']['id'] . '%'; // 'id' doesn't exist in filter
+### Backend-mirror routes
+
+Every Bearer route above is also exposed under `/api/backend/<original-path>` with scope `backend/<original-scope>`, authenticated via the REDAXO backend session cookie (no token needed). Permissions follow the user's REDAXO `complexPerm` settings — admins see everything, restricted users only their assigned structures/media-categories/clangs.
+
+Use these for first-party backend tooling (a custom backend page calling its own API, for example) so you don't have to issue a token to your own backend session.
+
+## List response format
+
+All list endpoints return:
+
+```json
+{
+  "data":  [ ... ],
+  "meta":  { "page": 1, "per_page": 20, "total": 137, "total_pages": 7 }
 }
 ```
 
-Consequences:
-- PHP warning `Undefined array key "id"` on every list call
-- SQL ends up `id LIKE '%%'` — matches everything but the filter is broken
-- Workaround: check `'' === $Query['filter']['name']` instead, then `LIKE %name%` on `name`
+Common query parameters on list endpoints:
 
-### `LIMIT` binding
+- `page`, `per_page` — pagination (per_page is capped at 1000)
+- `sort` — comma-separated `field:direction`, e.g. `name:asc,createdate:desc`. Each list endpoint has its own whitelist of allowed sort fields; passing an invalid one returns 400 with the allowed list.
+- `filter[<field>]` — endpoint-specific filters
 
-`rex_sql::factory()->getArray($sql, $params)` binds parameters as strings by default. MySQL doesn't accept `LIMIT 'x', 'y'` in all configurations (especially with `PDO::ATTR_EMULATE_PREPARES=false`). The endpoint then fails with "Route with method not found" (= swallowed exception) even though it's an SQL error.
+## Diagnostic flow (status codes)
 
-Workaround: cast `(int)$start` and `(int)$per_page` and inline them into the SQL string instead of using placeholders.
+| Status | Body                                                                     | Meaning                                                                |
+|--------|--------------------------------------------------------------------------|------------------------------------------------------------------------|
+| 401    | `{"error":"Authorization failed"}`                                       | Bearer auth failed: token invalid, or scope not in token's scope list  |
+| 404    | `{"error":"Route not found"}`                                            | No route matched the path                                              |
+| 405    | `{"error":"Method not allowed","allowed":[...]}`                         | Path matched but the HTTP method is wrong; `allowed` lists valid ones  |
+| 500    | `{"error":"Internal server error","message":"..."}`                      | Controller threw — check `var/log/system.log` for the exception        |
 
-### "Headers already sent"
+Quick path:
 
-`RouteCollection::handle()` calls `JSON_PRETTY_PRINT` for the response, then `rex_response::setStatus()` sets headers. Some configurations emit bytes earlier → log warnings (not functionally broken).
-
-### Frontend visibility — yrewrite path cache
-
-A newly-created article/category may return `404` on the frontend even with `status=1`:
-
-- yrewrite caches URL paths in `var/cache/addon/yrewrite/...`
-- `rex_article_service::addArticle()` triggers the right EPs, but yrewrite doesn't always regenerate its path cache (especially for new root categories)
-- Fix: backend → **AddOns → yrewrite → Allgemein** → "Alle Caches generieren". Or in code: `rex_yrewrite::generatePathFile([])`
-- There is currently **no** API endpoint for cache refresh.
-
-### Article metainfo not settable via API
-
-The article `add` schema knows only base fields (`name`, `category_id`, `priority`, `status`, `template_id`). Custom metainfos (`art_*`, `cat_*`) are not accepted. Workaround: set them via a separate backend step or write SQL directly. PUT/PATCH on articles is in the README as planned but not implemented.
-
-### Media upload not active
-
-`POST /api/media` is marked ❌ in the README. Workaround: place media manually (or via migration) in the media pool, then reference filenames via `media1..media10` when creating slices.
+1. **401 `Authorization failed`** → `BearerAuth`: extend the token's scope list to include the route's scope. `BackendUser` route: log into the backend first.
+2. **404 `Route not found`** → check the path against `lib/RoutePackage/*.php`.
+3. **405 `Method not allowed`** → use one of the methods in `allowed[]`.
+4. **500 `Internal server error`** → `tail var/log/system.log` for the underlying exception. The `message` field also includes the immediate error string.
+5. **HTTP 201 but frontend 404?** → yrewrite path cache stale (see below).
+6. **Slice add returns 4xx / 500 with "Template has no module in such ctype"** → in the backend, check the template's module/ctype assignment.
 
 ## Slice schema
 
@@ -125,7 +140,7 @@ The article `add` schema knows only base fields (`name`, `category_id`, `priorit
   "module_id": <int, required>,
   "clang_id":  <int, required>,
   "ctype_id":  <int, default 1>,
-  "value1":   "...",   "value2":   "...",   ...   "value19":   "...",
+  "value1":   "...",   "value2":   "...",   ...   "value20":   "...",
   "media1":   "...",   ...   "media10":  "...",
   "medialist1":"...", ...   "medialist10":"...",
   "link1":    "...",   ...   "link10":   "...",
@@ -133,14 +148,36 @@ The article `add` schema knows only base fields (`name`, `category_id`, `priorit
 }
 ```
 
-One slice = one module. Which `value*` / `media*` slot maps to which editor field is defined in `src/modules/<name> [id]/input.php` as `REX_INPUT_VALUE[n]` / `REX_MEDIA[id=n]`.
+One slice = one module. Which `value*` / `media*` slot maps to which editor field is defined in the module's input PHP as `REX_INPUT_VALUE[n]` / `REX_MEDIA[id=n]`.
 
 The addon validates before insert:
 
 - Article exists (`rex_article::get(...)`)
 - Language exists (`rex_clang::getAllIds()`)
 - Module exists (`rex_module`)
-- **Module is allowed in the template's ctype** (`rex_template::hasModule(...)`) — otherwise 404. If this check fails, look at the template's ctype/module assignment in the backend.
+- **Module is allowed in the template's ctype** (`rex_template::hasModule(...)`) — otherwise the call fails. If this check fails, look at the template's ctype/module assignment in the backend.
+
+`PUT` on a slice replaces the same fields; `DELETE` removes the slice and triggers the same EP chain as the backend page (`SLICE_DELETE` PRE → `rex_sql` delete → `SLICE_DELETED` POST → `art_content_updated`).
+
+## Frontend visibility — yrewrite path cache
+
+A newly-created article/category may return `404` on the frontend even with `status=1`:
+
+- yrewrite caches URL paths in `var/cache/addon/yrewrite/...`
+- `rex_article_service::addArticle()` triggers the right EPs, but yrewrite doesn't always regenerate its path cache (especially for new root categories)
+- Fix: backend → **AddOns → yrewrite → Allgemein** → "Alle Caches generieren". Or in code: `rex_yrewrite::generatePathFile([])`
+- There is currently **no** API endpoint for cache refresh.
+
+## Article metainfo
+
+Set custom metainfos (`art_*`, `cat_*`, `med_*`, `clang_*`) via the metainfo value endpoints:
+
+```
+PUT /api/structure/articles/{id}/metainfo
+{ "art_color": "blue", "art_layout": "wide" }
+```
+
+Field definitions are managed via `/api/metainfo/fields` (admin-only when called via `BackendUser`; via Bearer the token needs the `metainfo/fields/*` scopes).
 
 ## OpenAPI spec
 
@@ -148,8 +185,8 @@ Available in the backend at `?page=api/openapi`. Generated from the route defini
 
 ## Common pitfalls
 
-- Calling `POST /api/structure/articles` without the trailing slash – 401 "Route with method not found". The matcher cares.
-- Adding a scope to the token that doesn't quite match the route name (e.g. `structure/article/add` vs. `structure/articles/add`) – 401 "Authorization failed".
-- `Authorization` header missing on Apache – add the `RewriteRule` above.
-- Building tooling that posts a slice and expects the article to be reachable on the frontend immediately – regenerate yrewrite path cache after creating articles/categories.
-- Reading the swallowed-exception 401 as "wrong token" – check the system log first; lots of 401s are actually 500s in disguise.
+- Adding a scope to the token that doesn't quite match the route name (e.g. `structure/article/add` vs. `structure/articles/add`) → 401 `Authorization failed`. Copy from the route source, don't re-type.
+- Calling a Bearer route via the cookie session (or vice versa) → use the `/api/backend/...` mirror for backend-session calls, the plain path for Bearer.
+- Building tooling that posts a slice and expects the article to be reachable on the frontend immediately → regenerate yrewrite path cache after creating articles/categories.
+- 500 with no log line: check that `rex_logger` is configured and writeable; the addon logs every controller exception.
+- `Authorization` header missing on Apache → add the `RewriteRule` above.

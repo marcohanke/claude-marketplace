@@ -1,0 +1,12 @@
+{
+  "name": "redaxo-mform",
+  "version": "0.1.0",
+  "description": "MForm addon support for Claude Code: form fields, flex repeater, custom-link widgets, output helpers, YForm value types",
+  "author": {
+    "name": "Friends Of REDAXO"
+  },
+  "homepage": "https://github.com/FriendsOfREDAXO/mform",
+  "repository": "https://github.com/FriendsOfREDAXO/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["redaxo", "mform", "forms", "repeater", "modules"]
+}

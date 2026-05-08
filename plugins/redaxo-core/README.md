@@ -16,10 +16,12 @@ Core REDAXO knowledge for Claude Code. Recommended for every REDAXO project.
 - **redaxo-api-functions** – `rex_api_function` HTTP/AJAX endpoints, `$published` flag, JSON responses, CORS for cross-domain widgets
 - **redaxo-metainfo-fields** – metainfo `params` separator rules (`|` vs `:`), idempotent setup, navigation filtering by metainfo
 
-### Slash commands
+### Scaffolder skills (slash-invocable)
 
-- `/redaxo-core:rex-create-module` – guided module scaffolding
-- `/redaxo-core:rex-create-addon` – guided addon scaffolding
+- **rex-create-module** – guided module scaffolding (`/redaxo-core:rex-create-module`)
+- **rex-create-addon** – guided addon scaffolding (`/redaxo-core:rex-create-addon`)
+
+These are skills with `user-invocable` defaults — you can either type the slash command or let Claude pick them up automatically when you ask for a new module/addon.
 
 ## Install
 

@@ -1,5 +1,6 @@
 ---
-description: Scaffold a new REDAXO module with input/output PHP, REX_VALUE placeholders, and proper escaping. Asks for a name and the fields it should contain.
+name: rex-create-module
+description: Scaffold a new REDAXO module with input/output PHP, REX_VALUE placeholders, and proper escaping. Asks for a name and the fields it should contain. Invoke as /redaxo-core:rex-create-module when the user wants a new module scaffolded.
 ---
 
 You are helping the user scaffold a new REDAXO module. A module has two parts:

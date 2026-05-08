@@ -70,15 +70,15 @@ The injection is part of the standard auth flow — you don't need to call it ma
 When some user roles shouldn't go through OTP:
 
 ```php
-rex_extension::register('YCOM_AUTH_INIT', function (rex_extension_point $ep) {
-    $user = rex_ycom_auth::getUser();
-    if ($user && $user->isInGroup($apiOnlyGroupId)) {
-        rex_ycom_auth::setSessionVar('otp_verified', true);
+rex_extension::register('YCOM_AUTH_LOGIN_SUCCESS', function (rex_extension_point $ep) {
+    $user = $ep->getSubject();
+    if ($user instanceof rex_ycom_user && $user->isInGroup($apiOnlyGroupId)) {
+        rex_ycom_user_session::getInstance()->setOTPverified($user);
     }
 });
 ```
 
-Setting `otp_verified=true` in the session bypasses the OTP injection for that session.
+The OTP injection reads `otp_verified` from the **DB session row** (`rex_ycom_user_session`), not from `$_SESSION`. Use `setOTPverified()` to mark the current session as verified — `rex_ycom_auth::setSessionVar('otp_verified', true)` does NOT bypass the injection.
 
 ## Common pitfalls
 

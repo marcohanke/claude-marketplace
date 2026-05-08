@@ -7,9 +7,11 @@ description: External authentication for YCom – SAML, OAuth2, and CAS. Covers 
 
 YCom integrates with three SSO protocols out of the box: SAML, OAuth2, CAS. Each has its own config file, its own value field, and a matching extension point for mapping the external identity to a `rex_ycom_user`.
 
+All three protocols load their config via `rex_addon::get('ycom')->getDataPath('<protocol>.php')`, i.e. from `redaxo/data/addons/ycom/`. The path is identical regardless of REDAXO instance — keep these files **out of git** and version-control only an `.example.php` template.
+
 ## SAML
 
-Config file: `data/addons/ycom/saml.php` — return an array of SAML settings consumed by the underlying SimpleSAMLphp / OneLogin library YCom uses.
+Config file: `redaxo/data/addons/ycom/saml.php` — return an array of SAML settings consumed by the OneLogin/php-saml library YCom bundles.
 
 Login button on a YForm form:
 
@@ -26,7 +28,7 @@ Parameters:
 
 ## OAuth2
 
-Config file: `data/addons/ycom/oauth2.php` — return a settings array consumed by the underlying OAuth2 client.
+Config file: `redaxo/data/addons/ycom/oauth2.php` — return a settings array consumed by `league/oauth2-client`'s `GenericProvider`.
 
 ```php
 <?php
@@ -51,7 +53,7 @@ Same parameter shape as SAML.
 
 ## CAS
 
-Config file: `data/addons/ycom/cas.php` — settings for the CAS server.
+Config file: `redaxo/data/addons/ycom/cas.php` — settings for the CAS server. The CAS server CA cert lives next to it at `redaxo/data/addons/ycom/cas_cert.pem`.
 
 ```
 ycom_auth_cas|CAS Login|Fehler bei CAS-Login|example.com|{"status":1}

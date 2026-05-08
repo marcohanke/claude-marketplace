@@ -77,12 +77,18 @@ After validation, render the password-change form (see the `ycom-forms` skill) �
 ## Registration via token
 
 ```
-ycom_user_token|token|create|register|
 text|email|E-Mail
+validate|type|email|email|Bitte gueltige E-Mail eingeben.
+validate|unique|email|E-Mail wird bereits verwendet.|rex_ycom_user
 ycom_auth_password|password|Passwort|...
+hidden|status|0
+action|copy_value|email|login
 action|db|rex_ycom_user
+ycom_user_token|token|create|register|email
 action|tpl2email|register_confirm|email|
 ```
+
+Important: the form **must contain a field literally named `email`**. The `create` branch of `ycom_user_token` reads from `value_pool['sql']['email']` directly — the fourth pipe slot is documented as `email_field` for clarity but is not evaluated by the current implementation. So: name the email field `email`, full stop.
 
 Confirmation:
 
@@ -96,7 +102,7 @@ This pattern is cleaner than the older `activation_key` approach (see `ycom-form
 
 ## Common pitfalls
 
-- Using `ycom_user_token|token|create` without an `email_field` parameter – then the token has no associated user, and validation never matches.
+- The form lacks a field literally named `email` – the `create` branch reads `value_pool['sql']['email']` and throws `email not found`. The fourth pipe slot is a documentation hint, not a configurable field selector.
 - Building the link URL with `rex_getUrl()` but forgetting the article ID matches the article that has the `validate` field – wrong target = `Token ungueltig`.
 - Setting `csrf_protection|1` (default) on the validation article – the email link can't carry a CSRF token, so always add `objparams|csrf_protection|0` on validation forms.
 - Using a `login`-type token to also reset the password – use `password_reset` type. `login` only logs in.

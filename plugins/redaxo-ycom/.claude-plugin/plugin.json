@@ -1,0 +1,12 @@
+{
+  "name": "redaxo-ycom",
+  "version": "0.1.0",
+  "description": "YCom addon support for Claude Code: frontend user authentication, login/registration/password forms, groups, media protection, OTP/2FA, tokens, SAML/OAuth2/CAS",
+  "author": {
+    "name": "Friends Of REDAXO"
+  },
+  "homepage": "https://github.com/yakamara/redaxo_ycom",
+  "repository": "https://github.com/FriendsOfREDAXO/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["redaxo", "ycom", "auth", "users", "community"]
+}

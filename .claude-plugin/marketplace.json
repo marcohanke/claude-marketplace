@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "redaxo-marketplace",
+  "description": "Claude Code plugins for the REDAXO CMS and its addons",
+  "owner": {
+    "name": "Friends Of REDAXO",
+    "email": "info@redaxo.org"
+  },
+  "metadata": {
+    "version": "0.2.0"
+  },
+  "plugins": [
+    {
+      "name": "redaxo-core",
+      "source": "./plugins/redaxo-core",
+      "description": "Core REDAXO knowledge: architecture, modules, templates, rex_sql, extension points, addon development",
+      "category": "cms",
+      "tags": ["redaxo", "cms", "php", "core"],
+      "author": {
+        "name": "Friends Of REDAXO"
+      },
+      "homepage": "https://www.redaxo.org",
+      "license": "MIT"
+    },
+    {
+      "name": "redaxo-yform",
+      "source": "./plugins/redaxo-yform",
+      "description": "YForm addon: tables, datasets, field validation, email templates, frontend forms",
+      "category": "cms",
+      "tags": ["redaxo", "yform", "forms", "orm"],
+      "author": {
+        "name": "Friends Of REDAXO"
+      },
+      "homepage": "https://github.com/yakamara/redaxo_yform",
+      "license": "MIT"
+    },
+    {
+      "name": "redaxo-yrewrite",
+      "source": "./plugins/redaxo-yrewrite",
+      "description": "YRewrite addon: domains, pretty URLs, redirects, multi-language SEO",
+      "category": "cms",
+      "tags": ["redaxo", "yrewrite", "seo", "urls"],
+      "author": {
+        "name": "Friends Of REDAXO"
+      },
+      "homepage": "https://github.com/yakamara/redaxo_yrewrite",
+      "license": "MIT"
+    },
+    {
+      "name": "redaxo-structure",
+      "source": "./plugins/redaxo-structure",
+      "description": "Structure addon: articles, categories, templates assignment, meta info, content editing",
+      "category": "cms",
+      "tags": ["redaxo", "structure", "articles", "categories"],
+      "author": {
+        "name": "Friends Of REDAXO"
+      },
+      "homepage": "https://www.redaxo.org",
+      "license": "MIT"
+    },
+    {
+      "name": "redaxo-ycom",
+      "source": "./plugins/redaxo-ycom",
+      "description": "YCom addon: frontend user authentication, login/registration/password forms, groups, media protection, OTP/2FA, tokens, SAML/OAuth2/CAS",
+      "category": "cms",
+      "tags": ["redaxo", "ycom", "auth", "users", "community"],
+      "author": {
+        "name": "Friends Of REDAXO"
+      },
+      "homepage": "https://github.com/yakamara/redaxo_ycom",
+      "license": "MIT"
+    },
+    {
+      "name": "redaxo-api-addon",
+      "source": "./plugins/redaxo-api-addon",
+      "description": "FriendsOfRedaxo/api addon: bearer-token REST API for articles, categories, slices, modules, templates, languages, media, users",
+      "category": "cms",
+      "tags": ["redaxo", "api", "rest", "bearer"],
+      "author": {
+        "name": "Friends Of REDAXO"
+      },
+      "homepage": "https://github.com/FriendsOfRedaxo/api",
+      "license": "MIT"
+    }
+  ]
+}

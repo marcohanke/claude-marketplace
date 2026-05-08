@@ -1,0 +1,12 @@
+{
+  "name": "redaxo-yform",
+  "version": "0.1.0",
+  "description": "YForm addon support for Claude Code: tables, datasets, validation, email templates, frontend forms",
+  "author": {
+    "name": "Friends Of REDAXO"
+  },
+  "homepage": "https://github.com/yakamara/redaxo_yform",
+  "repository": "https://github.com/FriendsOfREDAXO/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["redaxo", "yform", "forms", "orm"]
+}

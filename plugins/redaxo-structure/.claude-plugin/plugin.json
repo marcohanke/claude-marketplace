@@ -1,0 +1,12 @@
+{
+  "name": "redaxo-structure",
+  "version": "0.1.0",
+  "description": "Structure addon support for Claude Code: articles, categories, content editing, meta info",
+  "author": {
+    "name": "Friends Of REDAXO"
+  },
+  "homepage": "https://www.redaxo.org",
+  "repository": "https://github.com/FriendsOfREDAXO/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["redaxo", "structure", "articles", "categories"]
+}

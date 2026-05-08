@@ -1,0 +1,12 @@
+{
+  "name": "redaxo-yrewrite",
+  "version": "0.1.0",
+  "description": "YRewrite addon support for Claude Code: domains, pretty URLs, redirects, multi-language SEO",
+  "author": {
+    "name": "Friends Of REDAXO"
+  },
+  "homepage": "https://github.com/yakamara/redaxo_yrewrite",
+  "repository": "https://github.com/FriendsOfREDAXO/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["redaxo", "yrewrite", "seo", "urls", "redirects"]
+}

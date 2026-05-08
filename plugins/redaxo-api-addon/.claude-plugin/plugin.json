@@ -1,0 +1,12 @@
+{
+  "name": "redaxo-api-addon",
+  "version": "0.1.0",
+  "description": "Support for the FriendsOfRedaxo/api addon: bearer-token REST API for articles, categories, slices, modules, templates, languages, media, and users",
+  "author": {
+    "name": "Friends Of REDAXO"
+  },
+  "homepage": "https://github.com/FriendsOfRedaxo/api",
+  "repository": "https://github.com/FriendsOfREDAXO/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["redaxo", "api", "rest", "bearer", "json"]
+}

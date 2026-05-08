@@ -78,7 +78,7 @@ TERMS=$(mkart "Nutzungsbedingungen akzeptieren")
 echo "$LOGIN $LOGOUT $REGISTER $REGISTER_CONFIRM $FORGOT $RESET $PROFILE $PWCHANGE $TERMS"
 ```
 
-**The articles come back offline.** `POST /api/structure/articles` accepts `status` in the payload but silently ignores it — every article is created with `status=0` (offline). The api addon's article-PUT endpoint also can't fix this (it calls a non-existent `rex_article_service::changeStatus()` and 500s). Cleanest workaround: bring them online via the official `rex_article_service::articleStatus()` API in step 3 below. Categories ARE created online — that part works.
+The articles are created online (`status=1`) via the api addon's POST endpoint. If you'd rather review them in the backend first, drop `"status":1` from the `mkart` body — articles then default to offline and you can flip them on later via `PUT /api/structure/articles/{id}` with `{"status":1}`.
 
 Avoid umlauts in article names — the slug-generator will UTF-8-escape them and you'll fight URL parsing later. Use `bestaetigen` not `bestätigen`, `aendern` not `ändern`. The form labels can still use proper umlauts.
 
@@ -288,20 +288,6 @@ foreach (['LOGIN','LOGOUT','REGISTER','REGISTER_CONFIRM','FORGOT','RESET','PROFI
     if (empty($ids[$key])) { fwrite(STDERR, "Missing $key=<id>\n"); exit(1); }
 }
 
-// 3a-pre) Bring articles online. The api addon's POST /articles ignores
-// status:1 in the payload, and its PUT endpoint hits a missing
-// rex_article_service::changeStatus() (api-addon bug). Use the official
-// rex_article_service::articleStatus() instead — once per article per active clang.
-$activeClangs = rex_clang::getAllIds(true);
-foreach ($ids as $articleId) {
-    foreach ($activeClangs as $clangId) {
-        $a = rex_article::get($articleId, $clangId);
-        if ($a && $a->getValue('status') != 1) {
-            rex_article_service::articleStatus($articleId, $clangId, 1);
-        }
-    }
-}
-
 // 3a) ycom_auth_type per article. UPDATE will hit ALL clangs of the article —
 // that's the desired default. Add WHERE clang_id = ... if you want per-language perms.
 $perms = [
@@ -416,7 +402,6 @@ Re-run guard for step 1: query `GET /api/structure/articles?per_page=200` and sk
 
 ## Common pitfalls (all observed during dogfood)
 
-- **`POST /api/structure/articles` ignores `status:1` in the payload** — every article is created with `status=0` (offline). The api addon's article-PUT endpoint also can't fix this (calls a non-existent `rex_article_service::changeStatus()` and returns 500 — upstream bug worth filing against `FriendsOfREDAXO/api`). The companion in step 3 calls `rex_article_service::articleStatus($id, $clang, 1)` for every article in every active clang, which is the official REDAXO API for status changes (also invalidates the structure cache correctly). Categories ARE created online by the `categories` endpoint — only articles need the manual flip.
 - **Trailing slash on `categories`**: `POST /api/structure/categories` works, `POST /api/structure/categories/` returns `{"error":"Route not found"}`. The `/articles` endpoint accepts both.
 - **Field `category_id`, not `parent_id`**: when creating a category, the *parent* is `category_id` (semi-counterintuitive). For articles, `category_id` is the containing category.
 - **Response shape**: `POST /articles` returns `{"message":"Article created","id":N}` — there is no `data` wrapper. Slice POST returns `slice_id`, not `id`.

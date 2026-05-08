@@ -7,7 +7,7 @@
     "email": "info@redaxo.org"
   },
   "metadata": {
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "plugins": [
     {
@@ -92,6 +92,18 @@
         "name": "Friends Of REDAXO"
       },
       "homepage": "https://github.com/FriendsOfREDAXO/search_it",
+      "license": "MIT"
+    },
+    {
+      "name": "redaxo-mform",
+      "source": "./plugins/redaxo-mform",
+      "description": "MForm addon: module input forms, flex repeater, custom-link widgets, imagelist, medialist, linklist, color swatch, output helpers",
+      "category": "cms",
+      "tags": ["redaxo", "mform", "forms", "repeater", "modules"],
+      "author": {
+        "name": "Friends Of REDAXO"
+      },
+      "homepage": "https://github.com/FriendsOfREDAXO/mform",
       "license": "MIT"
     }
   ]

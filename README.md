@@ -33,6 +33,7 @@ Add addon-specific plugins based on what your project uses:
 | `redaxo-core` | Architecture, modules, templates, `rex_sql`, extension points, addon development, console commands, `rex_api_function`, metainfo fields | Every REDAXO project |
 | `redaxo-structure` | Articles, categories, content editing, meta info | Almost always (Structure is part of core) |
 | `redaxo-yform` | YForm tables, datasets (YOrm), field/validate/action reference, frontend forms, email templates, REST API | If `yform` is installed |
+| `redaxo-mform` | Module input forms with `MForm::factory()`, flex repeaters, custom-link/imagelist/colorswatch widgets, output helpers, MForm-provided YForm value types | If `mform` is installed |
 | `redaxo-yrewrite` | Domains, pretty URLs, redirects, multi-language SEO | If `yrewrite` is installed |
 | `redaxo-ycom` | Frontend user auth, login/registration/password forms, groups, media protection, OTP/2FA, tokens, SAML/OAuth2/CAS | If `ycom` is installed |
 | `redaxo-api-addon` | FriendsOfRedaxo/api – Bearer-token REST API for articles/categories/slices/modules/templates/media | If you call (or extend) the `api` addon |

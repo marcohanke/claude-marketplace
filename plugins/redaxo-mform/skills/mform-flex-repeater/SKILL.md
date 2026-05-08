@@ -16,9 +16,9 @@ $mform = MForm::factory();
 
 $mform->addFlexRepeaterElement(1,
     MForm::factory()
-        ->addTextField('1.0.title',    ['label' => 'Titel'])
-        ->addTextAreaField('1.0.text', ['label' => 'Text'])
-        ->addMediaField('1.0.image',   ['label' => 'Bild', 'preview' => 1])
+        ->addTextField('title',     ['label' => 'Titel'])
+        ->addTextAreaField('text',  ['label' => 'Text'])
+        ->addMediaField('image',    ['label' => 'Bild', 'preview' => 1])
     ,
     [
         'btn_text'           => 'Eintrag hinzufügen',
@@ -37,28 +37,27 @@ echo $mform->show();
 
 ## ID conventions inside a repeater
 
-Use dotted IDs: `<slot>.<row-index>.<key>`
-
-- `<slot>` – the integer ID you pass to `addFlexRepeaterElement()` (e.g. `1`)
-- `<row-index>` – always `0` in the template; the repeater replaces it with the actual row index at runtime
-- `<key>` – any string key for the sub-field
+The **outer** repeater itself uses an integer slot ID (`1`, `2`, … = `REX_VALUE[1]`).
+The **fields inside the sub-form** use plain string keys – they become array keys in the JSON of each row.
 
 ```php
-// Slot 1, sub-key "headline"
-->addTextField('1.0.headline', ['label' => 'Überschrift'])
-
-// Slot 1, sub-key "link" (custom link widget)
-->addCustomLinkField('1.0.link', ['label' => 'Link'])
+$mform->addFlexRepeaterElement(1,             // outer slot → REX_VALUE[1]
+    MForm::factory()
+        ->addTextField('headline',  ['label' => 'Überschrift'])  // → $row['headline']
+        ->addCustomLinkField('link', ['label' => 'Link'])         // → $row['link']
+);
 ```
+
+No dotted prefix and no row index is needed in the template – the repeater handles row indices automatically at runtime.
 
 ## __MFRID__ placeholder
 
-For widget-internal IDs that must be unique per row (e.g. TinyMCE, modal IDs), use `__MFRID__` in the ID:
+For widget-internal IDs that must be unique per row (e.g. TinyMCE, modal IDs), use `__MFRID__` in **HTML attributes** (not in the field ID itself):
 
 ```php
 ->addModalElement(
     'Einstellungen',
-    MForm::factory()->addTextField('1.0.cssClass', ['label' => 'CSS-Klasse']),
+    MForm::factory()->addTextField('cssClass', ['label' => 'CSS-Klasse']),
     'btn-default', 'left',
     ['id' => 'modal-__MFRID__']
 )
@@ -95,23 +94,27 @@ All standard MForm field types work. Special widgets explicitly supported:
 
 ## Nested repeaters
 
-A repeater can contain another repeater one level deep:
+A repeater can contain another repeater one level deep. The inner sub-key is just a plain string – in the outer row's JSON it becomes an array under that key.
 
 ```php
-$mform->addFlexRepeaterElement(1,
-    MForm::factory()
-        ->addTextField('1.0.section_title', ['label' => 'Abschnittstitel'])
-        ->addFlexRepeaterElement('1.0.items',
-            MForm::factory()
-                ->addTextField('1.0.items.0.name', ['label' => 'Name'])
-                ->addCustomLinkField('1.0.items.0.link', ['label' => 'Link'])
-            ,
-            ['btn_text' => 'Element hinzufügen']
-        )
-    ,
-    ['btn_text' => 'Abschnitt hinzufügen']
-);
+// Inner sub-form
+$stepForm = MForm::factory()
+    ->addTextField('title', ['label' => 'Schritt-Titel'])
+    ->addTextAreaField('body', ['label' => 'Inhalt']);
+
+// Outer sub-form embeds the inner one under sub-key 'steps'
+$sectionForm = MForm::factory()
+    ->addTextField('section_title', ['label' => 'Abschnittstitel'])
+    ->addRepeaterElement('steps', $stepForm, true, true, [
+        'btn_text' => 'Schritt hinzufügen',
+    ]);
+
+$mform->addRepeaterElement(2, $sectionForm, true, true, [
+    'btn_text' => 'Abschnitt hinzufügen',
+]);
 ```
+
+In OUTPUT each section row contains `$section['steps']` as a normal array of step rows.
 
 ## Reading repeater values in OUTPUT PHP
 

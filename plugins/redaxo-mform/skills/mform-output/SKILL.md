@@ -62,7 +62,7 @@ $data = MFormOutputHelper::createLinkData('REX_VALUE[1]', [
 
 ---
 
-## Rendering a link in a template
+## Rendering a link in a module OUTPUT
 
 ```php
 use FriendsOfRedaxo\MForm\Utils\MFormOutputHelper;
@@ -125,7 +125,7 @@ foreach ($items as $item) {
 $items = MFormOutputHelper::normalizeRepeaterItems($items, ['link'], ['replace' => true]);
 ```
 
-### Complete repeater output example
+### Complete repeater module OUTPUT example
 
 ```php
 use FriendsOfRedaxo\MForm\Repeater\MFormRepeaterHelper;

@@ -20,15 +20,14 @@ echo $mform->show();
 
 ## Field ID system
 
-Every field gets a numeric or dotted-decimal ID that maps to `REX_VALUE[n]`:
+Every top-level field gets a numeric ID that maps to `REX_VALUE[n]`:
 
 | ID notation | Stores in | Reads with |
 |---|---|---|
 | `1` | `REX_VALUE[1]` | `REX_VALUE[1]` |
-| `1.0.headline` | `REX_VALUE[1]` (JSON sub-key) | decoded from the repeater JSON |
 | `2` | `REX_VALUE[2]` | `REX_VALUE[2]` |
 
-Simple fields use integer IDs 1–20. Repeater rows use dotted IDs (managed automatically).
+Simple fields use integer IDs 1–20. Inside a repeater the inner sub-form uses **plain string keys** (e.g. `'title'`, `'link'`) which become array keys in the row JSON – see the **mform-flex-repeater** skill.
 
 ## Input fields
 
@@ -55,6 +54,12 @@ $mform->addRadioField(3, ['yes' => 'Ja', 'no' => 'Nein'], ['label' => 'Option'],
 $mform->addCheckboxField(4, [1 => 'Aktiviert'], ['label' => 'Status']);
 $mform->addToggleCheckboxField(5, [1 => 'Sichtbar'], ['label' => 'Sichtbarkeit']);
 $mform->addCheckboxGroupField(6, ['news' => 'News', 'blog' => 'Blog', 'event' => 'Event'], ['label' => 'Kategorien']);
+
+// Optgroups: use nested array (key = group label)
+$mform->addSelectField(8, [
+    'Typ A' => ['a1' => 'Option A1', 'a2' => 'Option A2'],
+    'Typ B' => ['b1' => 'Option B1', 'b2' => 'Option B2'],
+], ['label' => 'Gruppenauswahl']);
 
 // SQL-based options (query must return two columns: value + label)
 $mform->addSelectField(7, null, ['label' => 'Artikel']);
@@ -144,6 +149,17 @@ $mform->addCollapseElement('Erweiterte Einstellungen', MForm::factory()
 // Accordion (only one open at a time)
 $mform->addAccordionElement('Abschnitt A', MForm::factory()->addTextField(6));
 $mform->addAccordionElement('Abschnitt B', MForm::factory()->addTextField(7));
+```
+
+### Inline layout
+
+Places multiple fields side-by-side in a single row without the Bootstrap column wrapper. The first parameter is an optional shared label; pass an empty string if you don't need one.
+
+```php
+$mform->addInlineElement('Name', MForm::factory()
+    ->addTextField(1, ['label' => 'Vorname'])
+    ->addTextField(2, ['label' => 'Nachname'])
+);
 ```
 
 ### Modal sub-form
@@ -310,8 +326,9 @@ echo MForm::factory()
 
 ## Common pitfalls
 
-- **Never mix integer IDs with the same number for different fields** – each value slot (1–20) can only hold one value. Repeater fields manage sub-keys automatically (e.g. `1.0.title`).
-- **`addRepeaterElement()` is just an alias** for `addFlexRepeaterElement()` – both exist for backwards compatibility. See the **mform-flex-repeater** skill for the full Repeater API.
+- **Never reuse the same integer ID for different top-level fields** – each value slot (1–20) can only hold one value.
+- **Inside a repeater, inner fields use plain string keys** (`'title'`, `'link'`, …), not dotted IDs. See the **mform-flex-repeater** skill for the full Repeater API.
+- **`addRepeaterElement()` is just an alias** for `addFlexRepeaterElement()` – both exist for backwards compatibility.
 - **`setSqlOptions()` must follow immediately** after the `addSelectField()` call it refers to.
 - **`setDefaultValue()` only applies** if the value slot is empty (first render). Existing saved values take precedence.
 - **`addToggleCheckboxField()`** stores `1` when checked, empty string when not. Check with `'1' === REX_VALUE[n]` in OUTPUT PHP.

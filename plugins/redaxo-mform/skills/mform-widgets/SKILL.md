@@ -108,10 +108,10 @@ foreach ($links as $linkStr) {
 
 ## MForm Link Field (`addMFormLinkField`)
 
-Internal-article-only wrapper around Custom-Link. Same `data-*` attributes apply.
+Internal-article-only wrapper around Custom-Link. `data-*` link-type flags go in `$parameter` (2nd); `label` goes in `$attributes` (4th).
 
 ```php
-$mform->addMFormLinkField(1, null, 5, ['label' => 'Artikel', 'data-extern' => 'disable', 'data-media' => 'disable']);
+$mform->addMFormLinkField(1, ['data-extern' => 'disable', 'data-media' => 'disable'], 5, ['label' => 'Artikel']);
 ```
 
 ---
@@ -121,12 +121,13 @@ $mform->addMFormLinkField(1, null, 5, ['label' => 'Artikel', 'data-extern' => 'd
 Single file from the media pool.
 
 ```php
-$mform->addMediaField(1, ['preview' => 1], null, ['label' => 'Bild']);
-// Or with category restriction:
-$mform->addMediaField(2, ['preview' => 1, 'types' => 'jpg,png,gif,svg,webp'], 3, ['label' => 'Grafik']);
+// All widget options (label, types, preview, category) go in the 2nd param ($parameter)
+$mform->addMediaField(1, ['label' => 'Bild', 'preview' => 1]);
+// With type restriction and category
+$mform->addMediaField(2, ['label' => 'Grafik', 'preview' => 1, 'types' => 'jpg,png,gif,svg,webp', 'category' => 3]);
 
-// MForm variant (custom_link-based, stores only filename)
-$mform->addMFormMediaField(1, ['preview' => 1], null, ['label' => 'Datei']);
+// MForm variant (mform-media, stores filename in REX_VALUE; label in $attributes, data-* in $parameter)
+$mform->addMFormMediaField(1, ['types' => 'jpg,png,webp', 'preview' => '1'], null, ['label' => 'Datei']);
 ```
 
 Reading in OUTPUT PHP:
@@ -146,6 +147,14 @@ Multiple media files; stores a comma-separated filename string.
 
 ```php
 $mform->addMedialistField(1, ['label' => 'Dateien', 'types' => 'pdf,doc,docx']);
+// With view options:
+$mform->addMedialistField(2, [
+    'label'       => 'Galerie',
+    'types'       => 'jpg,png,webp',
+    'view'        => 'gallery',   // start view: list | grid | gallery
+    'views'       => 'gallery,grid,list',
+    'view_switch' => 1,           // show view-toggle button (default: 1)
+]);
 ```
 
 Reading in OUTPUT PHP:
@@ -184,7 +193,7 @@ foreach ($filenames as $filename) {
 Multiple internal article links; stores a comma-separated list of article IDs.
 
 ```php
-$mform->addLinklistField(1, null, 5, ['label' => 'Verwandte Artikel']);
+$mform->addLinklistField(1, ['label' => 'Verwandte Artikel'], 5);
 ```
 
 Reading in OUTPUT PHP:
@@ -196,6 +205,46 @@ foreach ($ids as $id) {
         echo '<a href="' . rex_getUrl($art->getId()) . '">' . rex_escape($art->getName()) . '</a>';
     }
 }
+```
+
+---
+
+## Native REDAXO link (`addLinkField`)
+
+Stores a single article ID as `REX_LINK`. Output uses the classic `REX_LINK[id=n]` placeholder.
+
+```php
+// label and widget config go in 2nd param ($parameter); catId as 3rd param
+$mform->addLinkField(1, ['label' => 'Artikel'], 5); // 3rd param = start category ID
+```
+
+Reading in OUTPUT PHP:
+```php
+$id  = (int) 'REX_LINK[id=1]';
+$art = rex_article::get($id);
+if ($art) {
+    echo '<a href="' . rex_getUrl($id) . '">' . rex_escape($art->getName()) . '</a>';
+}
+```
+
+> Use `addCustomLinkField` when you need external, media or mailto support. Use `addLinkField` when you only need internal articles and want the native `REX_LINK` placeholder.
+
+---
+
+## Switching classic widgets to custom_link rendering (v9+)
+
+By default `addMediaField()` and `addLinkField()` use the classic REDAXO core widget (backward-compatible). You can globally switch them to the modern `custom_link` UI:
+
+```php
+// In project/boot.php (affects the whole project):
+MForm::useCustomLinkForClassicWidgets(true);
+```
+
+When enabled, both fields store their value in `REX_VALUE` (same format as `addCustomLinkField`/`addMFormMediaField`) instead of `REX_MEDIA`/`REX_LINK`. Read the output with `MFormOutputHelper::getCustomUrl()`.
+
+Check the current state:
+```php
+MForm::isUsingCustomLinkForClassicWidgets(); // bool
 ```
 
 ---
@@ -224,6 +273,58 @@ if (str_starts_with($color, '.')) {
     echo '<div style="background-color:' . rex_escape($color) . '">';
 }
 ```
+
+---
+
+## Using widgets outside modules
+
+### In own addon backend pages (direct `::getWidget()`)
+
+```php
+// Medialist widget – standalone, no MForm::factory() needed
+echo rex_var_custom_medialist::getWidget(
+    'settings_media',   // unique widget ID
+    'settings[media]',  // form field name (for POST)
+    $savedValue,        // current value (comma-separated filenames)
+    ['view' => 'gallery', 'views' => 'gallery,grid,list']
+);
+
+// Custom-Link-Multi widget
+echo rex_var_custom_link_multi::getWidget(
+    'settings_links',
+    'settings[links]',
+    $savedValue,
+    ['intern' => 1, 'external' => 1, 'media' => 1]
+);
+```
+
+### In `rex_form`
+
+Dedicated `rex_form_widget_*_element` classes are available:
+
+```php
+// Medialist
+$field = $form->addField('', 'media_list', null,
+    ['internal::fieldClass' => 'rex_form_widget_mform_medialist_element'], true);
+$field->setTypes('jpg,png,pdf');
+$field->setView('gallery');
+
+// Linklist
+$links = $form->addField('', 'links', null,
+    ['internal::fieldClass' => 'rex_form_widget_mform_linklist_element'], true);
+$links->setCategoryId(0);
+
+// Custom-Link-Multi
+$custom = $form->addField('', 'custom_links', null,
+    ['internal::fieldClass' => 'rex_form_widget_mform_custom_link_multi_element'], true);
+$custom->setIntern(1);
+$custom->setExternal(1);
+$custom->setMedia(1);
+```
+
+Available `rex_form` field classes: `rex_form_widget_mform_imglist_element`, `rex_form_widget_mform_medialist_element`, `rex_form_widget_mform_linklist_element`, `rex_form_widget_mform_customlink_element`, `rex_form_widget_mform_custom_link_multi_element`.
+
+> Widget assets are auto-loaded in the backend via `boot.php` – no manual asset include needed.
 
 ---
 

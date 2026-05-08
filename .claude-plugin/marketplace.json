@@ -7,7 +7,7 @@
     "email": "info@redaxo.org"
   },
   "metadata": {
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "plugins": [
     {
@@ -92,6 +92,18 @@
         "name": "Friends Of REDAXO"
       },
       "homepage": "https://github.com/FriendsOfREDAXO/search_it",
+      "license": "MIT"
+    },
+    {
+      "name": "redaxo-multiglossar",
+      "source": "./plugins/redaxo-multiglossar",
+      "description": "MultiGlossar addon: multilingual glossary terms, frontend term replacement, tooltips/links, article and template exclusions",
+      "category": "cms",
+      "tags": ["redaxo", "multiglossar", "glossary", "tooltip", "multilingual"],
+      "author": {
+        "name": "Friends Of REDAXO"
+      },
+      "homepage": "https://github.com/FriendsOfREDAXO/multiglossar",
       "license": "MIT"
     }
   ]

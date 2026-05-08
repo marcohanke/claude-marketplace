@@ -1,0 +1,12 @@
+{
+  "name": "redaxo-multiglossar",
+  "version": "0.1.0",
+  "description": "MultiGlossar addon support for Claude Code: glossary terms, multilingual maintenance, parser configuration, and frontend replacement output",
+  "author": {
+    "name": "Friends Of REDAXO"
+  },
+  "homepage": "https://github.com/FriendsOfREDAXO/multiglossar",
+  "repository": "https://github.com/FriendsOfREDAXO/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["redaxo", "multiglossar", "glossary", "tooltip", "multilingual"]
+}
